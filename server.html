@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Server API | ldapjs-promise</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="media/css/style.css">
+    <link rel="stylesheet" type="text/css" href="media/css/highlight.css">
+</head>
+<body>
+<div id="header">
+    <h1>Server API | ldapjs-promise Documentation</h1>
+</div>
+<div id="sidebar">
+
+<div>Sections</div>
+<span>
+<ul>
+<li><div><a href="index.html">Home</a></div></li>
+<li><div><a href="guide.html">Guide</a></div></li>
+<li><div><a href="examples.html">Examples</a></div></li>
+<li><div><a href="client.html">Client API</a></div></li>
+<li><div><a href="server.html">Server API</a></div></li>
+<li><div><a href="dn.html">DN API</a></div></li>
+<li><div><a href="filters.html">Filters API</a></div></li>
+<li><div><a href="errors.html">Error API</a></div></li>
+</ul>
+</span>
+
+<div>Contents</div>
+</span>
+<ul>
+<li>
+<div>
+<a href="#create-a-server">Create a server</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#properties-on-the-server-object">Properties on the server object</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#listening-for-requests">Listening for requests</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#inspecting-server-state">Inspecting server state</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#routes">Routes</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#common-request-elements">Common Request Elements</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#common-response-elements">Common Response Elements</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#errors">Errors</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#bind">Bind</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#bindrequest">BindRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#bindresponse">BindResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#add">Add</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#addrequest">AddRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#addresponse">AddResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#search">Search</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#searchrequest">SearchRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#searchresponse">SearchResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#modify">modify</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#modifyrequest">ModifyRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#change">Change</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#modifyresponse">ModifyResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#del">del</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#deleterequest">DeleteRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#deleteresponse">DeleteResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#compare">compare</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#comparerequest">CompareRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#compareresponse">CompareResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#modifydn">modifyDN</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#modifydnrequest">ModifyDNRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#modifydnresponse">ModifyDNResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#exop">exop</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#extendedrequest">ExtendedRequest</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#extendedresponse">ExtendedResponse</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#unbind">unbind</a>
+</div>
+</li>
+</ul>
+
+</div>
+
+<div id="content">
+<h1>ldapjs-promise Server API</h1>
+<div class="intro"><p>This document covers the ldapjs-promise server API and assumes that you are
+familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> first.</p>
+</div><h1>Create a server</h1>
+<p>The code to create a new server looks like:</p>
+<pre><code class="language-js">const server = ldap.createServer();
+</code></pre>
+<p>The full list of options is:</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>log</td>
+<td>You can optionally pass in a Bunyan compatible logger instance the client will use to acquire a child logger.</td>
+</tr>
+<tr>
+<td>certificate</td>
+<td>A PEM-encoded X.509 certificate; will cause this server to run in TLS mode.</td>
+</tr>
+<tr>
+<td>key</td>
+<td>A PEM-encoded private key that corresponds to <em>certificate</em> for SSL.</td>
+</tr>
+</tbody></table>
+<h3>Note On Logger</h3>
+<p>The passed in logger is expected to conform to the Log4j standard API.
+Internally, <a href="https://www.npmjs.com/packages/abstract-logging">abstract-logging</a>
+is used to implement the interface.  As a result, no log messages will be
+generated unless an external logger is supplied.</p>
+<p>Known compatible loggers are:</p>
+<ul>
+<li><a href="https://www.npmjs.com/package/bunyan">Bunyan</a></li>
+<li><a href="https://www.npmjs.com/package/pino">Pino</a></li>
+</ul>
+<h2>Properties on the server object</h2>
+<h3>maxConnections</h3>
+<p>Set this property to reject connections when the server&#39;s connection count gets
+high.</p>
+<h3>url</h3>
+<p>Returns the fully qualified URL this server is listening on. For example:
+<code>ldaps://10.1.2.3:1636</code>.  If you haven&#39;t yet called <code>listen</code>, it will always
+return <code>ldap://localhost:389</code>.</p>
+<h3>Event: &#39;close&#39;</h3>
+<p><code>function() {}</code></p>
+<p>Emitted when the server closes.</p>
+<h2>Listening for requests</h2>
+<p>The LDAP server API wraps up and mirrors the node.js <code>server.listen</code> family of
+APIs.</p>
+<p>After calling <code>listen</code>, the property <code>url</code> on the server object itself will be
+available.</p>
+<p>Example:</p>
+<pre><code class="language-js"> server.listen(389, &#39;127.0.0.1&#39;, function() {
+   console.log(&#39;LDAP server listening at: &#39; + server.url);
+ });
+</code></pre>
+<h3>Port and Host</h3>
+<p><code>listen(port, [host], [callback])</code></p>
+<p>Begin accepting connections on the specified port and host. If the host is
+omitted, the server will accept connections directed to the IPv4 address
+<code>127.0.0.1</code>. To listen on any other address, supply said address as the <code>host</code>
+parameter. For example, to listen on all available IPv6 addresses supply
+<code>::</code> as the <code>host</code> (note, this <em>may</em> also result in listening on all
+available IPv4 addresses, depending on operating system behavior).</p>
+<p>We highly recommend being as explicit as possible with the <code>host</code> parameter.
+Listening on all available addresses (through <code>::</code> or <code>0.0.0.0</code>) can lead
+to potential security issues.</p>
+<p>This function is asynchronous. The last parameter callback will be called when
+the server has been bound.</p>
+<h3>Unix Domain Socket</h3>
+<p><code>listen(path, [callback])</code></p>
+<p>Start a UNIX socket server listening for connections on the given path.</p>
+<p>This function is asynchronous. The last parameter callback will be called when
+the server has been bound.</p>
+<h3>File descriptor</h3>
+<p><code>listenFD(fd)</code></p>
+<p>Start a server listening for connections on the given file descriptor.</p>
+<p>This file descriptor must have already had the <code>bind(2)</code> and <code>listen(2)</code> system
+calls invoked on it. Additionally, it must be set non-blocking; try
+<code>fcntl(fd, F_SETFL, O_NONBLOCK)</code>.</p>
+<h2>Inspecting server state</h2>
+<h3>server.getConnections(callback)</h3>
+<p>The LDAP server API mirrors the <a href="https://nodejs.org/dist/latest-v22.x/docs/api/net.html#net_server_getconnections_callback">Node.js <code>server.getConnections</code> API</a>. Callback
+should take two arguments err and count.</p>
+<h1>Routes</h1>
+<p>The LDAP server API is meant to be the LDAP-equivalent of the express/restify
+paradigm of programming.  Essentially every method is of the form
+<code>OP(req, res, next)</code> where OP is one of bind, add, del, etc.  You can chain
+handlers together by calling <code>next()</code> and ordering your functions in the
+definition of the route.  For example:</p>
+<pre><code class="language-js">function authorize(req, res, next) {
+  if (!req.connection.ldap.bindDN.equals(&#39;cn=root&#39;))
+    return next(new ldap.InsufficientAccessRightsError());
+
+  return next();
+}
+
+server.search(&#39;o=example&#39;, authorize, function(req, res, next) { ... });
+</code></pre>
+<p>Note that ldapjs-promise is also slightly different, since it is often going to
+be backed to a DB-like entity, in that it also has an API where you can pass in
+a &#39;backend&#39; object.  This is necessary if there are persistent connection pools,
+caching, etc. that need to be placed in an object.</p>
+<p>For example <a href="https://github.com/mcavage/node-ldapjs-riak">ldapjs-riak</a> is a
+complete implementation of the LDAP protocol over
+<a href="https://github.com/basho/riak">Riak</a>.  Getting an LDAP server up with riak
+looks like:</p>
+<pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
+const ldapRiak = require(&#39;ldapjs-riak&#39;);
+
+const server = ldap.createServer();
+const backend = ldapRiak.createBackend({
+  &quot;host&quot;: &quot;localhost&quot;,
+  &quot;port&quot;: 8098,
+  &quot;bucket&quot;: &quot;example&quot;,
+  &quot;indexes&quot;: [&quot;l&quot;, &quot;cn&quot;],
+  &quot;uniqueIndexes&quot;: [&quot;uid&quot;],
+  &quot;numConnections&quot;: 5
+});
+
+server.add(&quot;o=example&quot;,
+           backend,
+           backend.add());
+...
+</code></pre>
+<p>The first parameter to an ldapjs-promise route is always the point in the
+tree to mount the handler chain at.  The second argument is <em>optionally</em> a
+backend object.  After that you can pass in an arbitrary combination of
+functions in the form <code>f(req, res, next)</code> or arrays of functions of the same
+signature (ldapjs-promise will unroll them).</p>
+<p>Unlike HTTP, LDAP operations do not have a heterogeneous wire format, so each
+operation requires specific methods/fields on the request/response
+objects.  However, there is a <code>.use()</code> method availabe, similar to
+that on express/connect, allowing you to chain up &quot;middleware&quot;:</p>
+<pre><code class="language-js">server.use(function(req, res, next) {
+  console.log(&#39;hello world&#39;);
+  return next();
+});
+</code></pre>
+<h2>Common Request Elements</h2>
+<p>All request objects have the <code>dn</code> getter on it, which is &quot;context-sensitive&quot;
+and returns the point in the tree that the operation wants to operate on.  The
+LDAP protocol itself sadly doesn&#39;t define operations this way, and has a unique
+name for just about every op.  So, ldapjs calls it <code>dn</code>.  The DN object itself
+is documented at <a href="dn.html">DN</a>.</p>
+<p>All requests have an optional array of <code>Control</code> objects.  <code>Control</code> will have
+the properties <code>type</code> (string), <code>criticality</code> (boolean), and optionally, a
+string <code>value</code>.</p>
+<p>All request objects will have a <code>connection</code> object, which is the <code>net.Socket</code>
+associated to this request.  Off the <code>connection</code> object is an <code>ldap</code> object.
+The most important property to pay attention to is the <code>bindDN</code> property
+which will be an instance of an <code>ldap.DN</code> object.  This is what the client
+authenticated as on this connection. If the client didn&#39;t bind, then a DN object
+will be there defaulted to <code>cn=anonymous</code>.</p>
+<p>Additionally, request will have a <code>logId</code> parameter you can use to uniquely
+identify the request/connection pair in logs (includes the LDAP messageId).</p>
+<h2>Common Response Elements</h2>
+<p>All response objects will have an <code>end</code> method on them.  By default, calling
+<code>res.end()</code> with no arguments will return SUCCESS (0x00) to the client
+(with the exception of <code>compare</code> which will return COMPARE_TRUE (0x06)).  You
+can pass in a status code to the <code>end()</code> method to return an alternate status
+code.</p>
+<p>However, it is more common/easier to use the <code>return next(new LDAPError())</code>
+pattern, since ldapjs-promise will fill in the extra LDAPResult fields like
+matchedDN and error message for you.</p>
+<h2>Errors</h2>
+<p>ldapjs-promise includes an exception hierarchy that directly corresponds to the
+RFC list of error codes.  The complete list is documented in
+<a href="errors.html">errors</a>.  But the paradigm is something defined like
+CONSTRAINT_VIOLATION in the RFC would be <code>ConstraintViolationError</code> in
+ldapjs-promise.  Upon calling <code>next(new LDAPError())</code>, ldapjs-promise will
+<em>stop</em> calling your handler chain.  For example:</p>
+<pre><code class="language-js">server.search(&#39;o=example&#39;,
+  (req, res, next) =&gt; { return next(); },
+  (req, res, next) =&gt; { return next(new ldap.OperationsError()); },
+  (req, res, next) =&gt; { res.end(); }
+);
+</code></pre>
+<p>In the code snipped above, the third handler would never get invoked.</p>
+<h1>Bind</h1>
+<p>Adds a mount in the tree to perform LDAP binds with. Example:</p>
+<pre><code class="language-js">server.bind(&#39;ou=people, o=example&#39;, (req, res, next) =&gt; {
+  console.log(&#39;bind DN: &#39; + req.dn.toString());
+  console.log(&#39;bind PW: &#39; + req.credentials);
+  res.end();
+});
+</code></pre>
+<h2>BindRequest</h2>
+<p>BindRequest objects have the following properties:</p>
+<h3>version</h3>
+<p>The LDAP protocol version the client is requesting to run this connection on.
+Note that ldapjs only supports LDAP version 3.</p>
+<h3>name</h3>
+<p>The DN the client is attempting to bind as (note this is the same as the <code>dn</code>
+property).</p>
+<h3>authentication</h3>
+<p>The method of authentication.  Right now only <code>simple</code> is supported.</p>
+<h3>credentials</h3>
+<p>The credentials to go with the <code>name/authentication</code> pair.  For <code>simple</code>, this
+will be the plain-text password.</p>
+<h2>BindResponse</h2>
+<p>No extra methods above an <code>LDAPResult</code> API call.</p>
+<h1>Add</h1>
+<p>Adds a mount in the tree to perform LDAP adds with.</p>
+<pre><code class="language-js">server.add(&#39;ou=people, o=example&#39;, (req, res, next) =&gt; {
+  console.log(&#39;DN: &#39; + req.dn.toString());
+  console.log(&#39;Entry attributes: &#39; + req.toObject().attributes);
+  res.end();
+});
+</code></pre>
+<h2>AddRequest</h2>
+<p>AddRequest objects have the following properties:</p>
+<h3>entry</h3>
+<p>The DN the client is attempting to add (this is the same as the <code>dn</code>
+property).</p>
+<h3>attributes</h3>
+<p>The set of attributes in this entry.  This will be an array of <code>Attribute</code>
+objects (which have a type and an array of values).  This directly map to how
+the request came in off the wire.  It is likely you will want to use
+<code>toObject()</code> and iterate that way, since that will transform an AddRequest into
+a standard JavaScript object.</p>
+<h3>toObject()</h3>
+<p>This operation will return a plain JavaScript object from the request that looks
+like:</p>
+<pre><code class="language-js">{
+  dn: &#39;cn=foo, o=example&#39;,  // string, not DN object
+  attributes: {
+    cn: [&#39;foo&#39;],
+    sn: [&#39;bar&#39;],
+    objectclass: [&#39;person&#39;, &#39;top&#39;]
+  }
+}
+</code></pre>
+<h2>AddResponse</h2>
+<p>No extra methods above an <code>LDAPResult</code> API call.</p>
+<h1>Search</h1>
+<p>Adds a handler for the LDAP search operation.</p>
+<pre><code class="language-js">server.search(&#39;o=example&#39;, (req, res, next) =&gt; {
+  console.log(&#39;base object: &#39; + req.dn.toString());
+  console.log(&#39;scope: &#39; + req.scope);
+  console.log(&#39;filter: &#39; + req.filter.toString());
+  res.end();
+});
+</code></pre>
+<h2>SearchRequest</h2>
+<p>SearchRequest objects have the following properties:</p>
+<h3>baseObject</h3>
+<p>The DN the client is attempting to start the search at (equivalent to <code>dn</code>).</p>
+<h3>scope</h3>
+<p>(string) one of:</p>
+<ul>
+<li>base</li>
+<li>one</li>
+<li>sub</li>
+</ul>
+<h3>derefAliases</h3>
+<p>An integer (defined in the LDAP protocol). Defaults to &#39;0&#39; (meaning
+never deref).</p>
+<h3>sizeLimit</h3>
+<p>The number of entries to return. Defaults to &#39;0&#39; (unlimited). ldapjs-promise
+does not currently automatically enforce this, but probably will at some point.</p>
+<h3>timeLimit</h3>
+<p>Maximum amount of time the server should take in sending search entries.
+Defaults to &#39;0&#39; (unlimited).</p>
+<h3>typesOnly</h3>
+<p>Whether to return only the names of attributes, and not the values.  Defaults to
+&#39;false&#39;.  ldapjs-promise will take care of this for you.</p>
+<h3>filter</h3>
+<p>The <a href="filters.html">filter</a> object that the client requested.  Notably this has
+a <code>matches()</code> method on it that you can leverage.  For an example of
+introspecting a filter, take a look at the ldapjs-riak source.</p>
+<h3>attributes</h3>
+<p>An optional list of attributes to restrict the returned result sets to.
+ldapjs-promise will automatically handle this for you.</p>
+<h2>SearchResponse</h2>
+<h3>send(entry)</h3>
+<p>Allows you to send a <code>SearchEntry</code> object.  You do not need to
+explicitly pass in a <code>SearchEntry</code> object, and can instead just send a plain
+JavaScript object that matches the format used from <code>AddRequest.toObject()</code>.</p>
+<pre><code class="language-js">server.search(&#39;o=example&#39;, (req, res, next) =&gt; {
+  const obj = {
+    dn: &#39;o=example&#39;,
+    attributes: {
+      objectclass: [&#39;top&#39;, &#39;organization&#39;],
+      o: [&#39;example&#39;]
+    }
+  };
+
+  if (req.filter.matches(obj))
+    res.send(obj)
+
+  res.end();
+});
+</code></pre>
+<h1>modify</h1>
+<p>Allows you to handle an LDAP modify operation.</p>
+<pre><code class="language-js">server.modify(&#39;o=example&#39;, (req, res, next) =&gt; {
+  console.log(&#39;DN: &#39; + req.dn.toString());
+  console.log(&#39;changes:&#39;);
+  for (const c of req.changes) {
+    console.log(&#39;  operation: &#39; + c.operation);
+    console.log(&#39;  modification: &#39; + c.modification.toString());
+  }
+  res.end();
+});
+</code></pre>
+<h2>ModifyRequest</h2>
+<p>ModifyRequest objects have the following properties:</p>
+<h3>object</h3>
+<p>The DN the client is attempting to update (this is the same as the <code>dn</code>
+property).</p>
+<h3>changes</h3>
+<p>An array of <code>Change</code> objects the client is attempting to perform. See below for
+details on the <code>Change</code> object.</p>
+<h2>Change</h2>
+<p>The <code>Change</code> object will have the following properties:</p>
+<h3>operation</h3>
+<p>A string, and will be one of: &#39;add&#39;, &#39;delete&#39;, or &#39;replace&#39;.</p>
+<h3>modification</h3>
+<p>Will be an <code>Attribute</code> object, which will have a &#39;type&#39; (string) field, and
+&#39;vals&#39;, which will be an array of string values.</p>
+<h2>ModifyResponse</h2>
+<p>No extra methods above an <code>LDAPResult</code> API call.</p>
+<h1>del</h1>
+<p>Allows you to handle an LDAP delete operation.</p>
+<pre><code class="language-js">server.del(&#39;o=example&#39;, (req, res, next) =&gt; {
+  console.log(&#39;DN: &#39; + req.dn.toString());
+  res.end();
+});
+</code></pre>
+<h2>DeleteRequest</h2>
+<h3>entry</h3>
+<p>The DN the client is attempting to delete (this is the same as the <code>dn</code>
+property).</p>
+<h2>DeleteResponse</h2>
+<p>No extra methods above an <code>LDAPResult</code> API call.</p>
+<h1>compare</h1>
+<p>Allows you to handle an LDAP compare operation.</p>
+<pre><code class="language-js">server.compare(&#39;o=example&#39;, (req, res, next) =&gt; {
+  console.log(&#39;DN: &#39; + req.dn.toString());
+  console.log(&#39;attribute name: &#39; + req.attribute);
+  console.log(&#39;attribute value: &#39; + req.value);
+  res.end(req.value === &#39;foo&#39;);
+});
+</code></pre>
+<h2>CompareRequest</h2>
+<h3>entry</h3>
+<p>The DN the client is attempting to compare (this is the same as the <code>dn</code>
+property).</p>
+<h3>attribute</h3>
+<p>The string name of the attribute to compare values of.</p>
+<h3>value</h3>
+<p>The string value of the attribute to compare.</p>
+<h2>CompareResponse</h2>
+<p>The <code>end()</code> method for compare takes a boolean, as opposed to a numeric code
+(you can still pass in a numeric LDAP status code if you want). Beyond
+that, there are no extra methods above an <code>LDAPResult</code> API call.</p>
+<h1>modifyDN</h1>
+<p>Allows you to handle an LDAP modifyDN operation.</p>
+<pre><code class="language-js">server.modifyDN(&#39;o=example&#39;, (req, res, next) =&gt; {
+  console.log(&#39;DN: &#39; + req.dn.toString());
+  console.log(&#39;new RDN: &#39; + req.newRdn.toString());
+  console.log(&#39;deleteOldRDN: &#39; + req.deleteOldRdn);
+  console.log(&#39;new superior: &#39; +
+    (req.newSuperior ? req.newSuperior.toString() : &#39;&#39;));
+
+  res.end();
+});
+</code></pre>
+<h2>ModifyDNRequest</h2>
+<h3>entry</h3>
+<p>The DN the client is attempting to rename (this is the same as the <code>dn</code>
+property).</p>
+<h3>newRdn</h3>
+<p>The leaf RDN the client wants to rename this entry to. This will be a DN object.</p>
+<h3>deleteOldRdn</h3>
+<p>Whether or not to delete the old RDN (i.e., rename vs copy). Defaults to &#39;true&#39;.</p>
+<h3>newSuperior</h3>
+<p>Optional (DN).  If the modifyDN operation wishes to relocate the entry in the
+tree, the <code>newSuperior</code> field will contain the new parent.</p>
+<h2>ModifyDNResponse</h2>
+<p>No extra methods above an <code>LDAPResult</code> API call.</p>
+<h1>exop</h1>
+<p>Allows you to handle an LDAP extended operation. Extended operations are pretty
+much arbitrary extensions, by definition.  Typically the extended &#39;name&#39; is an
+OID, but ldapjs-promise makes no such restrictions; it just needs to be a
+string.  Unlike the other operations, extended operations don&#39;t map to any
+location in the tree, so routing here will be exact match, as opposed to
+subtree.</p>
+<pre><code class="language-js">// LDAP whoami
+server.exop(&#39;1.3.6.1.4.1.4203.1.11.3&#39;, (req, res, next) =&gt; {
+  console.log(&#39;name: &#39; + req.name);
+  console.log(&#39;value: &#39; + req.value);
+  res.value = &#39;u:xxyyz@EXAMPLE.NET&#39;;
+  res.end();
+  return next();
+});
+</code></pre>
+<h2>ExtendedRequest</h2>
+<h3>name</h3>
+<p>Will always be a match to the route-defined name.  Clients must include this
+in their requests.</p>
+<h3>value</h3>
+<p>Optional string. The arbitrary blob the client sends for this extended
+operation.</p>
+<h2>ExtendedResponse</h2>
+<h3>name</h3>
+<p>The name of the extended operation. ldapjs will automatically set this.</p>
+<h3>value</h3>
+<p>The arbitrary (string) value to send back as part of the response.</p>
+<h1>unbind</h1>
+<p>ldapjs-promise by default provides an unbind handler that just disconnects the
+client and cleans up any internals (in ldapjs-promise core).  You can override
+this handler if you need to clean up any items in your backend, or perform any
+other cleanup tasks you need to.</p>
+<pre><code class="language-js">server.unbind((req, res, next) =&gt; {
+  res.end();
+});
+</code></pre>
+<p>Note that the LDAP unbind operation actually does not send any response (by
+definition in the RFC), so the UnbindResponse is really just a stub that
+ultimately calls <code>net.Socket.end()</code> for you. There are no properties available
+on either the request or response objects, except, of course, for <code>end()</code> on the
+response.</p>
+
+</div><!-- end #content -->
+
+</body>
+</html>

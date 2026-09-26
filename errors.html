@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Errors API | ldapjs-promise</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="media/css/style.css">
+    <link rel="stylesheet" type="text/css" href="media/css/highlight.css">
+</head>
+<body>
+<div id="header">
+    <h1>Errors API | ldapjs-promise Documentation</h1>
+</div>
+<div id="sidebar">
+
+<div>Sections</div>
+<span>
+<ul>
+<li><div><a href="index.html">Home</a></div></li>
+<li><div><a href="guide.html">Guide</a></div></li>
+<li><div><a href="examples.html">Examples</a></div></li>
+<li><div><a href="client.html">Client API</a></div></li>
+<li><div><a href="server.html">Server API</a></div></li>
+<li><div><a href="dn.html">DN API</a></div></li>
+<li><div><a href="filters.html">Filters API</a></div></li>
+<li><div><a href="errors.html">Error API</a></div></li>
+</ul>
+</span>
+
+<div>Contents</div>
+</span>
+<ul>
+<li>
+<div>
+<a href="#complete-list-of-ldaperror-subclasses">Complete list of LDAPError subclasses</a>
+</div>
+</li>
+</ul>
+
+</div>
+
+<div id="content">
+<h1>ldapjs-promise Errors API</h1>
+<div class="intro"><p>This document covers the ldapjs-promise errors API and assumes that you are
+familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> first.</p>
+</div><p>All errors in the ldapjs-promise framework extend from an abstract error type
+called <code>LDAPError</code>. In addition to the properties listed below, all errors will
+have a <code>stack</code> property correctly set.</p>
+<p>In general, you will be using the errors in ldapjs-promise like:</p>
+<pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
+
+const db = {};
+
+server.add(&#39;o=example&#39;, (req, res, next) =&gt; {
+  const parent = req.dn.parent();
+  if (parent) {
+    if (!db[parent.toString()])
+      return next(new ldap.NoSuchObjectError(parent.toString()));
+  }
+  if (db[req.dn.toString()])
+    return next(new ldap.EntryAlreadyExistsError(req.dn.toString()));
+
+  ...
+});
+</code></pre>
+<p>I.e., if you just pass them into the <code>next()</code> handler, ldapjs-promise will
+automatically return the appropriate LDAP error message, and stop the handler
+chain.</p>
+<p>All errors will have the following properties:</p>
+<h2>code</h2>
+<p>Returns the LDAP status code associated with this error.</p>
+<h2>name</h2>
+<p>The name of this error.</p>
+<h2>message</h2>
+<p>The message that will be returned to the client.</p>
+<h1>Complete list of LDAPError subclasses</h1>
+<ul>
+<li>OperationsError</li>
+<li>ProtocolError</li>
+<li>TimeLimitExceededError</li>
+<li>SizeLimitExceededError</li>
+<li>CompareFalseError</li>
+<li>CompareTrueError</li>
+<li>AuthMethodNotSupportedError</li>
+<li>StrongAuthRequiredError</li>
+<li>ReferralError</li>
+<li>AdminLimitExceededError</li>
+<li>UnavailableCriticalExtensionError</li>
+<li>ConfidentialityRequiredError</li>
+<li>SaslBindInProgressError</li>
+<li>NoSuchAttributeError</li>
+<li>UndefinedAttributeTypeError</li>
+<li>InappropriateMatchingError</li>
+<li>ConstraintViolationError</li>
+<li>AttributeOrValueExistsError</li>
+<li>InvalidAttriubteSyntaxError</li>
+<li>NoSuchObjectError</li>
+<li>AliasProblemError</li>
+<li>InvalidDnSyntaxError</li>
+<li>AliasDerefProblemError</li>
+<li>InappropriateAuthenticationError</li>
+<li>InvalidCredentialsError</li>
+<li>InsufficientAccessRightsError</li>
+<li>BusyError</li>
+<li>UnavailableError</li>
+<li>UnwillingToPerformError</li>
+<li>LoopDetectError</li>
+<li>NamingViolationError</li>
+<li>ObjectclassViolationError</li>
+<li>NotAllowedOnNonLeafError</li>
+<li>NotAllowedOnRdnError</li>
+<li>EntryAlreadyExistsError</li>
+<li>ObjectclassModsProhibitedError</li>
+<li>AffectsMultipleDsasError</li>
+<li>OtherError</li>
+</ul>
+
+</div><!-- end #content -->
+
+</body>
+</html>

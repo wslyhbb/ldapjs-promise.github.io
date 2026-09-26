@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Examples | ldapjs-promise</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="media/css/style.css">
+    <link rel="stylesheet" type="text/css" href="media/css/highlight.css">
+</head>
+<body>
+<div id="header">
+    <h1>Examples | ldapjs-promise Documentation</h1>
+</div>
+<div id="sidebar">
+
+<div>Sections</div>
+<span>
+<ul>
+<li><div><a href="index.html">Home</a></div></li>
+<li><div><a href="guide.html">Guide</a></div></li>
+<li><div><a href="examples.html">Examples</a></div></li>
+<li><div><a href="client.html">Client API</a></div></li>
+<li><div><a href="server.html">Server API</a></div></li>
+<li><div><a href="dn.html">DN API</a></div></li>
+<li><div><a href="filters.html">Filters API</a></div></li>
+<li><div><a href="errors.html">Error API</a></div></li>
+</ul>
+</span>
+
+<div>Contents</div>
+</span>
+<ul>
+<li>
+<div>
+<a href="#in-memory-server">In-memory server</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#etcpasswd-server">/etc/passwd server</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#address-book">Address Book</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#multi-threaded-server">Multi-threaded Server</a>
+</div>
+</li>
+</ul>
+
+</div>
+
+<div id="content">
+<h1>ldapjs-promise Examples</h1>
+<div class="intro"><p>This page contains a (hopefully) growing list of sample code to get you started
+with ldapjs-promise.</p>
+</div><h1>In-memory server</h1>
+<pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
+
+
+///--- Shared handlers
+
+function authorize(req, res, next) {
+  /* Any user may search after bind, only cn=root has full power */
+  const isSearch = (req instanceof ldap.SearchRequest);
+  if (!req.connection.ldap.bindDN.equals(&#39;cn=root&#39;) &amp;&amp; !isSearch)
+    return next(new ldap.InsufficientAccessRightsError());
+
+  return next();
+}
+
+
+///--- Globals
+
+const SUFFIX = &#39;o=joyent&#39;;
+const db = {};
+const server = ldap.createServer();
+
+
+
+server.bind(&#39;cn=root&#39;, (req, res, next) =&gt; {
+  if (req.dn.toString() !== &#39;cn=root&#39; || req.credentials !== &#39;secret&#39;)
+    return next(new ldap.InvalidCredentialsError());
+
+  res.end();
+  return next();
+});
+
+server.add(SUFFIX, authorize, (req, res, next) =&gt; {
+  const dn = req.dn.toString();
+
+  if (db[dn])
+    return next(new ldap.EntryAlreadyExistsError(dn));
+
+  db[dn] = req.toObject().attributes;
+  res.end();
+  return next();
+});
+
+server.bind(SUFFIX, (req, res, next) =&gt; {
+  const dn = req.dn.toString();
+  if (!db[dn])
+    return next(new ldap.NoSuchObjectError(dn));
+
+  if (!db[dn].userpassword)
+    return next(new ldap.NoSuchAttributeError(&#39;userPassword&#39;));
+
+  if (db[dn].userpassword.indexOf(req.credentials) === -1)
+    return next(new ldap.InvalidCredentialsError());
+
+  res.end();
+  return next();
+});
+
+server.compare(SUFFIX, authorize, (req, res, next) =&gt; {
+  const dn = req.dn.toString();
+  if (!db[dn])
+    return next(new ldap.NoSuchObjectError(dn));
+
+  if (!db[dn][req.attribute])
+    return next(new ldap.NoSuchAttributeError(req.attribute));
+
+  const matches = false;
+  const vals = db[dn][req.attribute];
+  for (const value of vals) {
+    if (value === req.value) {
+      matches = true;
+      break;
+    }
+  }
+
+  res.end(matches);
+  return next();
+});
+
+server.del(SUFFIX, authorize, (req, res, next) =&gt; {
+  const dn = req.dn.toString();
+  if (!db[dn])
+    return next(new ldap.NoSuchObjectError(dn));
+
+  delete db[dn];
+
+  res.end();
+  return next();
+});
+
+server.modify(SUFFIX, authorize, (req, res, next) =&gt; {
+  const dn = req.dn.toString();
+  if (!req.changes.length)
+    return next(new ldap.ProtocolError(&#39;changes required&#39;));
+  if (!db[dn])
+    return next(new ldap.NoSuchObjectError(dn));
+
+  const entry = db[dn];
+
+  for (const change of req.changes) {
+    mod = change.modification;
+    switch (change.operation) {
+    case &#39;replace&#39;:
+      if (!entry[mod.type])
+        return next(new ldap.NoSuchAttributeError(mod.type));
+
+      if (!mod.vals || !mod.vals.length) {
+        delete entry[mod.type];
+      } else {
+        entry[mod.type] = mod.vals;
+      }
+
+      break;
+
+    case &#39;add&#39;:
+      if (!entry[mod.type]) {
+        entry[mod.type] = mod.vals;
+      } else {
+        for (const v of mod.vals) {
+          if (entry[mod.type].indexOf(v) === -1)
+            entry[mod.type].push(v);
+        }
+      }
+
+      break;
+
+    case &#39;delete&#39;:
+      if (!entry[mod.type])
+        return next(new ldap.NoSuchAttributeError(mod.type));
+
+      delete entry[mod.type];
+
+      break;
+    }
+  }
+
+  res.end();
+  return next();
+});
+
+server.search(SUFFIX, authorize, (req, res, next) =&gt; {
+  const dn = req.dn.toString();
+  if (!db[dn])
+    return next(new ldap.NoSuchObjectError(dn));
+
+  let scopeCheck;
+
+  switch (req.scope) {
+  case &#39;base&#39;:
+    if (req.filter.matches(db[dn])) {
+      res.send({
+        dn: dn,
+        attributes: db[dn]
+      });
+    }
+
+    res.end();
+    return next();
+
+  case &#39;one&#39;:
+    scopeCheck = (k) =&gt; {
+      if (req.dn.equals(k))
+        return true;
+
+      const parent = ldap.parseDN(k).parent();
+      return (parent ? parent.equals(req.dn) : false);
+    };
+    break;
+
+  case &#39;sub&#39;:
+    scopeCheck = (k) =&gt; {
+      return (req.dn.equals(k) || req.dn.parentOf(k));
+    };
+
+    break;
+  }
+
+  const keys = Object.keys(db);
+  for (const key of keys) {
+    if (!scopeCheck(key))
+      return;
+
+    if (req.filter.matches(db[key])) {
+      res.send({
+        dn: key,
+        attributes: db[key]
+      });
+    }
+  }
+
+  res.end();
+  return next();
+});
+
+
+
+///--- Fire it up
+
+server.listen(1389, () =&gt; {
+  console.log(&#39;LDAP server up at: %s&#39;, server.url);
+});
+</code></pre>
+<h1>/etc/passwd server</h1>
+<pre><code class="language-js">const fs = require(&#39;fs&#39;);
+const ldap = require(&#39;ldapjs-promise&#39;);
+const { spawn } = require(&#39;child_process&#39;);
+
+
+
+///--- Shared handlers
+
+function authorize(req, res, next) {
+  if (!req.connection.ldap.bindDN.equals(&#39;cn=root&#39;))
+    return next(new ldap.InsufficientAccessRightsError());
+
+  return next();
+}
+
+
+function loadPasswdFile(req, res, next) {
+  fs.readFile(&#39;/etc/passwd&#39;, &#39;utf8&#39;, (err, data) =&gt; {
+    if (err)
+      return next(new ldap.OperationsError(err.message));
+
+    req.users = {};
+
+    const lines = data.split(&#39;\n&#39;);
+    for (const line of lines) {
+      if (!line || /^#/.test(line))
+        continue;
+
+      const record = line.split(&#39;:&#39;);
+      if (!record || !record.length)
+        continue;
+
+      req.users[record[0]] = {
+        dn: &#39;cn=&#39; + record[0] + &#39;, ou=users, o=myhost&#39;,
+        attributes: {
+          cn: record[0],
+          uid: record[2],
+          gid: record[3],
+          description: record[4],
+          homedirectory: record[5],
+          shell: record[6] || &#39;&#39;,
+          objectclass: &#39;unixUser&#39;
+        }
+      };
+    }
+
+    return next();
+  });
+}
+
+
+const pre = [authorize, loadPasswdFile];
+
+
+
+///--- Mainline
+
+const server = ldap.createServer();
+
+server.bind(&#39;cn=root&#39;, (req, res, next) =&gt; {
+  if (req.dn.toString() !== &#39;cn=root&#39; || req.credentials !== &#39;secret&#39;)
+    return next(new ldap.InvalidCredentialsError());
+
+  res.end();
+  return next();
+});
+
+
+server.add(&#39;ou=users, o=myhost&#39;, pre, (req, res, next) =&gt; {
+  if (!req.dn.rdns[0].cn)
+    return next(new ldap.ConstraintViolationError(&#39;cn required&#39;));
+
+  if (req.users[req.dn.rdns[0].cn])
+    return next(new ldap.EntryAlreadyExistsError(req.dn.toString()));
+
+  const entry = req.toObject().attributes;
+
+  if (entry.objectclass.indexOf(&#39;unixUser&#39;) === -1)
+    return next(new ldap.ConstraintViolationError(&#39;entry must be a unixUser&#39;));
+
+  const opts = [&#39;-m&#39;];
+  if (entry.description) {
+    opts.push(&#39;-c&#39;);
+    opts.push(entry.description[0]);
+  }
+  if (entry.homedirectory) {
+    opts.push(&#39;-d&#39;);
+    opts.push(entry.homedirectory[0]);
+  }
+  if (entry.gid) {
+    opts.push(&#39;-g&#39;);
+    opts.push(entry.gid[0]);
+  }
+  if (entry.shell) {
+    opts.push(&#39;-s&#39;);
+    opts.push(entry.shell[0]);
+  }
+  if (entry.uid) {
+    opts.push(&#39;-u&#39;);
+    opts.push(entry.uid[0]);
+  }
+  opts.push(entry.cn[0]);
+  const useradd = spawn(&#39;useradd&#39;, opts);
+
+  const messages = [];
+
+  useradd.stdout.on(&#39;data&#39;, (data) =&gt; {
+    messages.push(data.toString());
+  });
+  useradd.stderr.on(&#39;data&#39;, (data) =&gt; {
+    messages.push(data.toString());
+  });
+
+  useradd.on(&#39;exit&#39;, (code) =&gt; {
+    if (code !== 0) {
+      let msg = &#39;&#39; + code;
+      if (messages.length)
+        msg += &#39;: &#39; + messages.join();
+      return next(new ldap.OperationsError(msg));
+    }
+
+    res.end();
+    return next();
+  });
+});
+
+
+server.modify(&#39;ou=users, o=myhost&#39;, pre, (req, res, next) =&gt; {
+  if (!req.dn.rdns[0].cn || !req.users[req.dn.rdns[0].cn])
+    return next(new ldap.NoSuchObjectError(req.dn.toString()));
+
+  if (!req.changes.length)
+    return next(new ldap.ProtocolError(&#39;changes required&#39;));
+
+  const user = req.users[req.dn.rdns[0].cn].attributes;
+  let mod;
+
+  for (const change of req.changes) {
+    mod = change.modification;
+    switch (change.operation) {
+    case &#39;replace&#39;:
+      if (mod.type !== &#39;userpassword&#39; || !mod.vals || !mod.vals.length)
+        return next(new ldap.UnwillingToPerformError(&#39;only password updates &#39; +
+                                                     &#39;allowed&#39;));
+      break;
+    case &#39;add&#39;:
+    case &#39;delete&#39;:
+      return next(new ldap.UnwillingToPerformError(&#39;only replace allowed&#39;));
+    }
+  }
+
+  const passwd = spawn(&#39;chpasswd&#39;, [&#39;-c&#39;, &#39;MD5&#39;]);
+  passwd.stdin.end(user.cn + &#39;:&#39; + mod.vals[0], &#39;utf8&#39;);
+
+  passwd.on(&#39;exit&#39;, (code) =&gt; {
+    if (code !== 0)
+      return next(new ldap.OperationsError(&#39;&#39; + code));
+
+    res.end();
+    return next();
+  });
+});
+
+
+server.del(&#39;ou=users, o=myhost&#39;, pre, (req, res, next) =&gt; {
+  if (!req.dn.rdns[0].cn || !req.users[req.dn.rdns[0].cn])
+    return next(new ldap.NoSuchObjectError(req.dn.toString()));
+
+  const userdel = spawn(&#39;userdel&#39;, [&#39;-f&#39;, req.dn.rdns[0].cn]);
+
+  const messages = [];
+  userdel.stdout.on(&#39;data&#39;, (data) =&gt; {
+    messages.push(data.toString());
+  });
+  userdel.stderr.on(&#39;data&#39;, (data) =&gt; {
+    messages.push(data.toString());
+  });
+
+  userdel.on(&#39;exit&#39;, (code) =&gt; {
+    if (code !== 0) {
+      let msg = &#39;&#39; + code;
+      if (messages.length)
+        msg += &#39;: &#39; + messages.join();
+      return next(new ldap.OperationsError(msg));
+    }
+
+    res.end();
+    return next();
+  });
+});
+
+
+server.search(&#39;o=myhost&#39;, pre, (req, res, next) =&gt; {
+  const keys = Object.keys(req.users);
+  for (const k of keys) {
+    if (req.filter.matches(req.users[k].attributes))
+      res.send(req.users[k]);
+  }
+
+  res.end();
+  return next();
+});
+
+
+
+// LDAP &quot;standard&quot; listens on 389, but whatever.
+server.listen(1389, &#39;127.0.0.1&#39;, () =&gt; {
+  console.log(&#39;/etc/passwd LDAP server up at: %s&#39;, server.url);
+});
+</code></pre>
+<h1>Address Book</h1>
+<p>This example is courtesy of <a href="https://github.com/dresende">Diogo Resende</a> and
+illustrates setting up an address book for typical mail clients such as
+Thunderbird or Evolution over a MySQL database.</p>
+<pre><code class="language-js">// MySQL test: (create on database &#39;abook&#39; with username &#39;abook&#39; and password &#39;abook&#39;)
+//
+// CREATE TABLE IF NOT EXISTS `users` (
+//   `id` int(5) unsigned NOT NULL AUTO_INCREMENT,
+//   `username` varchar(50) NOT NULL,
+//   `password` varchar(50) NOT NULL,
+//   PRIMARY KEY (`id`),
+//   KEY `username` (`username`)
+// ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+// INSERT INTO `users` (`username`, `password`) VALUES
+// (&#39;demo&#39;, &#39;demo&#39;);
+// CREATE TABLE IF NOT EXISTS `contacts` (
+//   `id` int(5) unsigned NOT NULL AUTO_INCREMENT,
+//   `user_id` int(5) unsigned NOT NULL,
+//   `name` varchar(100) NOT NULL,
+//   `email` varchar(255) NOT NULL,
+//   PRIMARY KEY (`id`),
+//   KEY `user_id` (`user_id`)
+// ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+// INSERT INTO `contacts` (`user_id`, `name`, `email`) VALUES
+// (1, &#39;John Doe&#39;, &#39;john.doe@example.com&#39;),
+// (1, &#39;Jane Doe&#39;, &#39;jane.doe@example.com&#39;);
+//
+
+const ldap = require(&#39;ldapjs-promise&#39;);
+const mysql = require(&quot;mysql&quot;);
+const server = ldap.createServer();
+const addrbooks = {};
+const userinfo = {};
+const ldap_port = 389;
+const basedn = &quot;dc=example, dc=com&quot;;
+const company = &quot;Example&quot;;
+const db = mysql.createClient({
+  user: &quot;abook&quot;,
+  password: &quot;abook&quot;,
+  database: &quot;abook&quot;
+});
+
+db.query(&quot;SELECT c.*,u.username,u.password &quot; +
+         &quot;FROM contacts c JOIN users u ON c.user_id=u.id&quot;,
+         (err, contacts) =&gt; {
+  if (err) {
+    console.log(&quot;Error fetching contacts&quot;, err);
+    process.exit(1);
+  }
+
+  for (const contact of contacts) {
+    if (!addrbooks.hasOwnProperty(contact.username)) {
+      addrbooks[contact.username] = [];
+      userinfo[&quot;cn=&quot; + contact.username + &quot;, &quot; + basedn] = {
+        abook: addrbooks[contact.username],
+        pwd: contact.password
+      };
+    }
+
+    const p = contact.name.indexOf(&quot; &quot;);
+    if (p != -1)
+      contact.firstname = contact.name.substr(0, p);
+
+    p = contact.name.lastIndexOf(&quot; &quot;);
+    if (p != -1)
+      contact.surname = contact.name.substr(p + 1);
+
+    addrbooks[contact.username].push({
+      dn: &quot;cn=&quot; + contact.name + &quot;, &quot; + basedn,
+      attributes: {
+        objectclass: [ &quot;top&quot; ],
+        cn: contact.name,
+        mail: contact.email,
+        givenname: contact.firstname,
+        sn: contact.surname,
+        ou: company
+      }
+    });
+  }
+
+  server.bind(basedn, (req, res, next) =&gt; {
+    const username = req.dn.toString();
+    const password = req.credentials;
+
+    if (!userinfo.hasOwnProperty(username) ||
+         userinfo[username].pwd != password) {
+      return next(new ldap.InvalidCredentialsError());
+    }
+
+    res.end();
+    return next();
+  });
+
+  server.search(basedn, (req, res, next) =&gt; {
+    const binddn = req.connection.ldap.bindDN.toString();
+
+    if (userinfo.hasOwnProperty(binddn)) {
+      for (const abook of userinfo[binddn].abook) {
+        if (req.filter.matches(abook.attributes))
+          res.send(abook);
+      }
+    }
+    res.end();
+  });
+
+  server.listen(ldap_port, () =&gt; {
+    console.log(&quot;Addressbook started at %s&quot;, server.url);
+  });
+});
+</code></pre>
+<p>To test out this example, try:</p>
+<pre><code class="language-shell">$ ldapsearch -H ldap://localhost:389 -x -D cn=demo,dc=example,dc=com \
+  -w demo -b &quot;dc=example,dc=com&quot; objectclass=*
+</code></pre>
+<h1>Multi-threaded Server</h1>
+<p>This example demonstrates multi-threading via the <code>cluster</code> module utilizing a <code>net</code> server for initial socket receipt.  An alternate example demonstrating use of the <code>connectionRouter</code> <code>serverOptions</code> hook is available in the <code>examples</code> directory.</p>
+<pre><code class="language-js">const cluster = require(&#39;cluster&#39;);
+const ldap = require(&#39;ldapjs-promise&#39;);
+const net = require(&#39;net&#39;);
+const os = require(&#39;os&#39;);
+
+const threads = [];
+threads.getNext = function () {
+    return (Math.floor(Math.random() * this.length));
+};
+
+const serverOptions = {
+    port: 1389
+};
+
+if (cluster.isMaster) {
+    const server = net.createServer(serverOptions, (socket) =&gt; {
+        socket.pause();
+        console.log(&#39;ldapjs client requesting connection&#39;);
+        let routeTo = threads.getNext();
+        threads[routeTo].send({ type: &#39;connection&#39; }, socket);
+    });
+
+    for (let i = 0; i &lt; os.cpus().length; i++) {
+        let thread = cluster.fork({
+            &#39;id&#39;: i
+        });
+        thread.id = i;
+        thread.on(&#39;message&#39;, function (msg) {
+
+        });
+        threads.push(thread);
+    }
+
+    server.listen(serverOptions.port, function () {
+        console.log(&#39;ldapjs listening at ldap://127.0.0.1:&#39; + serverOptions.port);
+    });
+} else {
+    const server = ldap.createServer(serverOptions);
+
+    let threadId = process.env.id;
+
+    process.on(&#39;message&#39;, (msg, socket) =&gt; {
+        switch (msg.type) {
+            case &#39;connection&#39;:
+                server.newConnection(socket);
+                socket.resume();
+                console.log(&#39;ldapjs client connection accepted on &#39; + threadId.toString());
+        }
+    });
+
+    server.search(&#39;dc=example&#39;, function (req, res, next) {
+        console.log(&#39;ldapjs search initiated on &#39; + threadId.toString());
+        var obj = {
+            dn: req.dn.toString(),
+            attributes: {
+                objectclass: [&#39;organization&#39;, &#39;top&#39;],
+                o: &#39;example&#39;
+            }
+        };
+
+        if (req.filter.matches(obj.attributes))
+            res.send(obj);
+
+        res.end();
+    });
+}
+</code></pre>
+
+</div><!-- end #content -->
+
+</body>
+</html>

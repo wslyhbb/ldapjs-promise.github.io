@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Filters API | ldapjs-promise</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="media/css/style.css">
+    <link rel="stylesheet" type="text/css" href="media/css/highlight.css">
+</head>
+<body>
+<div id="header">
+    <h1>Filters API | ldapjs-promise Documentation</h1>
+</div>
+<div id="sidebar">
+
+<div>Sections</div>
+<span>
+<ul>
+<li><div><a href="index.html">Home</a></div></li>
+<li><div><a href="guide.html">Guide</a></div></li>
+<li><div><a href="examples.html">Examples</a></div></li>
+<li><div><a href="client.html">Client API</a></div></li>
+<li><div><a href="server.html">Server API</a></div></li>
+<li><div><a href="dn.html">DN API</a></div></li>
+<li><div><a href="filters.html">Filters API</a></div></li>
+<li><div><a href="errors.html">Error API</a></div></li>
+</ul>
+</span>
+
+<div>Contents</div>
+</span>
+<ul>
+<li>
+<div>
+<a href="#parsefilterfilterstring">parseFilter(filterString)</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#equalityfilter">EqualityFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#presencefilter">PresenceFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#substringfilter">SubstringFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#greaterthanequalsfilter">GreaterThanEqualsFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#lessthanequalsfilter">LessThanEqualsFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#andfilter">AndFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#orfilter">OrFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#notfilter">NotFilter</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#approximatefilter">ApproximateFilter</a>
+</div>
+</li>
+</ul>
+
+</div>
+
+<div id="content">
+<h1>ldapjs-promise Filters API</h1>
+<div class="intro"><p>This document covers the ldapjs-promise filters API and assumes that you are
+familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> first.</p>
+</div><p>LDAP search filters are really the backbone of LDAP search operations, and
+ldapjs-promise tries to get you in &quot;easy&quot; with them if your dataset is small,
+and also lets you introspect them if you want to write a &quot;query planner&quot;.  For
+reference, make sure to read over <a href="http://www.ietf.org/rfc/rfc2254.txt">RFC2254</a>,
+as this explains the LDAPv3 text filter representation.</p>
+<p>ldapjs-promise gives you a distinct object type mapping to each filter that is
+context-sensitive. However, <em>all</em> filters have a <code>matches()</code> method on them, if
+that is all you need.  Most filters will have an <code>attribute</code> property on them,
+since &quot;simple&quot; filters all operate on an attribute/value assertion.  The
+&quot;complex&quot; filters are really aggregations of other filters (i.e. &#39;and&#39;), and so
+these do not provide that property.</p>
+<p>All Filters in the ldapjs-promise framework extend from <code>Filter</code>, which wil have the
+property <code>type</code> available; this will return a string name for the filter, and
+will be one of:</p>
+<h1>parseFilter(filterString)</h1>
+<p>Parses an <a href="http://www.ietf.org/rfc/rfc2254.txt">RFC2254</a> filter string into an
+ldapjs-promise object(s).  If the filter is &quot;complex&quot;, it will be a &quot;tree&quot; of objects.
+For example:</p>
+<pre><code class="language-js">const parseFilter = require(&#39;ldapjs-promise&#39;).parseFilter;
+
+const f = parseFilter(&#39;(objectclass=*)&#39;);
+</code></pre>
+<p>Is a &quot;simple&quot; filter, and would just return a <code>PresenceFilter</code> object. However,</p>
+<pre><code class="language-js">const f = parseFilter(&#39;(&amp;(employeeType=manager)(l=Seattle))&#39;);
+</code></pre>
+<p>Would return an <code>AndFilter</code>, which would have a <code>filters</code> array of two
+<code>EqualityFilter</code> objects.</p>
+<p><code>parseFilter</code> will throw if an invalid string is passed in (that is, a
+syntactically invalid string).</p>
+<h1>EqualityFilter</h1>
+<p>The equality filter is used to check exact matching of attribute/value
+assertions.  This object will have an <code>attribute</code> and <code>value</code> property, and the
+<code>name</code> property will be <code>equal</code>.</p>
+<p>The string syntax for an equality filter is <code>(attr=value)</code>.</p>
+<p>The <code>matches()</code> method will return true IFF the passed in object has a
+key matching <code>attribute</code> and a value matching <code>value</code>.</p>
+<pre><code class="language-js">const f = new EqualityFilter({
+  attribute: &#39;cn&#39;,
+  value: &#39;foo&#39;
+});
+
+f.matches({cn: &#39;foo&#39;});  =&gt; true
+f.matches({cn: &#39;bar&#39;});  =&gt; false
+</code></pre>
+<p>Equality matching uses &quot;strict&quot; type JavaScript comparison, and by default
+everything in ldapjs-promise (and LDAP) is a UTF-8 string.  If you want
+comparison of numbers, or something else, you will need to use a middleware
+interceptor that transforms values of objects.</p>
+<h1>PresenceFilter</h1>
+<p>The presence filter is used to check if an object has an attribute at all, with
+any value. This object will have an <code>attribute</code> property, and the <code>name</code>
+property will be <code>present</code>.</p>
+<p>The string syntax for a presence filter is <code>(attr=*)</code>.</p>
+<p>The <code>matches()</code> method will return true IFF the passed in object has a
+key matching <code>attribute</code>.</p>
+<pre><code class="language-js">const f = new PresenceFilter({
+  attribute: &#39;cn&#39;
+});
+
+f.matches({cn: &#39;foo&#39;});  =&gt; true
+f.matches({sn: &#39;foo&#39;});  =&gt; false
+</code></pre>
+<h1>SubstringFilter</h1>
+<p>The substring filter is used to do wildcard matching of a string value. This
+object will have an <code>attribute</code> property and then it will have an <code>initial</code>
+property, which is the prefix match, an <code>any</code> which will be an array of strings
+that are to be found <em>somewhere</em> in the target string, and a <code>final</code> property,
+which will be the suffix match of the string. <code>any</code> and <code>final</code> are both
+optional. The <code>name</code> property will be <code>substring</code>.</p>
+<p>The string syntax for a presence filter is <code>(attr=foo*bar*cat*dog)</code>, which would
+map to:</p>
+<pre><code class="language-js">{
+  initial: &#39;foo&#39;,
+  any: [&#39;bar&#39;, &#39;cat&#39;],
+  final: &#39;dog&#39;
+}
+</code></pre>
+<p>The <code>matches()</code> method will return true IFF the passed in object has a
+key matching <code>attribute</code> and the &quot;regex&quot; matches the value</p>
+<pre><code class="language-js">const f = new SubstringFilter({
+  attribute: &#39;cn&#39;,
+  initial: &#39;foo&#39;,
+  any: [&#39;bar&#39;],
+  final: &#39;baz&#39;
+});
+
+f.matches({cn: &#39;foobigbardogbaz&#39;});  =&gt; true
+f.matches({sn: &#39;fobigbardogbaz&#39;});  =&gt; false
+</code></pre>
+<h1>GreaterThanEqualsFilter</h1>
+<p>The ge filter is used to do comparisons and ordering based on the value type.
+As mentioned elsewhere, by default everything in LDAP and ldapjs-promise is a
+string, so this filter&#39;s <code>matches()</code> would be using lexicographical ordering of
+strings. If you wanted <code>&gt;=</code> semantics over numeric values, you would need to
+add some middleware to convert values before comparison (and the value of the
+filter). Note that the ldapjs-promise schema middleware will do this.</p>
+<p>The GreaterThanEqualsFilter will have an <code>attribute</code> property, a <code>value</code>
+property and the <code>name</code> property will be <code>ge</code>.</p>
+<p>The string syntax for a ge filter is:</p>
+<pre><code>(cn&gt;=foo)
+</code></pre>
+<p>The <code>matches()</code> method will return true IFF the passed in object has a
+key matching <code>attribute</code> and the value is <code>&gt;=</code> this filter&#39;s <code>value</code>.</p>
+<pre><code class="language-js">const f = new GreaterThanEqualsFilter({
+  attribute: &#39;cn&#39;,
+  value: &#39;foo&#39;,
+});
+
+f.matches({cn: &#39;foobar&#39;});  =&gt; true
+f.matches({cn: &#39;abc&#39;});  =&gt; false
+</code></pre>
+<h1>LessThanEqualsFilter</h1>
+<p>The le filter is used to do comparisons and ordering based on the value type.
+As mentioned elsewhere, by default everything in LDAP and ldapjs-promise is a
+string, so this filter&#39;s <code>matches()</code> would be using lexicographical ordering of
+strings. If you wanted <code>&lt;=</code> semantics over numeric values, you would need to
+add some middleware to convert values before comparison (and the value of the
+filter). Note that the ldapjs-promise schema middleware will do this.</p>
+<p>The string syntax for a le filter is:</p>
+<pre><code>(cn&lt;=foo)
+</code></pre>
+<p>The LessThanEqualsFilter will have an <code>attribute</code> property, a <code>value</code>
+property and the <code>name</code> property will be <code>le</code>.</p>
+<p>The <code>matches()</code> method will return true IFF the passed in object has a
+key matching <code>attribute</code> and the value is <code>&lt;=</code> this filter&#39;s <code>value</code>.</p>
+<pre><code class="language-js">const f = new LessThanEqualsFilter({
+  attribute: &#39;cn&#39;,
+  value: &#39;foo&#39;,
+});
+
+f.matches({cn: &#39;abc&#39;});  =&gt; true
+f.matches({cn: &#39;foobar&#39;});  =&gt; false
+</code></pre>
+<h1>AndFilter</h1>
+<p>The and filter is a complex filter that simply contains &quot;child&quot; filters. The
+object will have a <code>filters</code> property which is an array of <code>Filter</code> objects. The
+<code>name</code> property will be <code>and</code>.</p>
+<p>The string syntax for an and filter is (assuming below we&#39;re and&#39;ing two
+equality filters):</p>
+<pre><code>(&amp;(cn=foo)(sn=bar))
+</code></pre>
+<p>The <code>matches()</code> method will return true IFF the passed in object matches all
+the filters in the <code>filters</code> array.</p>
+<pre><code class="language-js">const f = new AndFilter({
+  filters: [
+    new EqualityFilter({
+      attribute: &#39;cn&#39;,
+      value: &#39;foo&#39;
+    }),
+    new EqualityFilter({
+      attribute: &#39;sn&#39;,
+      value: &#39;bar&#39;
+    })
+  ]
+});
+
+f.matches({cn: &#39;foo&#39;, sn: &#39;bar&#39;});  =&gt; true
+f.matches({cn: &#39;foo&#39;, sn: &#39;baz&#39;});  =&gt; false
+</code></pre>
+<h1>OrFilter</h1>
+<p>The or filter is a complex filter that simply contains &quot;child&quot; filters. The
+object will have a <code>filters</code> property which is an array of <code>Filter</code> objects. The
+<code>name</code> property will be <code>or</code>.</p>
+<p>The string syntax for an or filter is (assuming below we&#39;re or&#39;ing two
+equality filters):</p>
+<pre><code>(|(cn=foo)(sn=bar))
+</code></pre>
+<p>The <code>matches()</code> method will return true IFF the passed in object matches <em>any</em>
+of the filters in the <code>filters</code> array.</p>
+<pre><code class="language-js">const f = new OrFilter({
+  filters: [
+    new EqualityFilter({
+      attribute: &#39;cn&#39;,
+      value: &#39;foo&#39;
+    }),
+    new EqualityFilter({
+      attribute: &#39;sn&#39;,
+      value: &#39;bar&#39;
+    })
+  ]
+});
+
+f.matches({cn: &#39;foo&#39;, sn: &#39;baz&#39;});  =&gt; true
+f.matches({cn: &#39;bar&#39;, sn: &#39;baz&#39;});  =&gt; false
+</code></pre>
+<h1>NotFilter</h1>
+<p>The not filter is a complex filter that contains a single &quot;child&quot; filter. The
+object will have a <code>filter</code> property which is an instance of a <code>Filter</code> object.
+The <code>name</code> property will be <code>not</code>.</p>
+<p>The string syntax for a not filter is (assuming below we&#39;re not&#39;ing an
+equality filter):</p>
+<pre><code>(!(cn=foo))
+</code></pre>
+<p>The <code>matches()</code> method will return true IFF the passed in object does not match
+the filter in the <code>filter</code> property.</p>
+<pre><code class="language-js">const f = new NotFilter({
+  filter: new EqualityFilter({
+      attribute: &#39;cn&#39;,
+      value: &#39;foo&#39;
+    })
+});
+
+f.matches({cn: &#39;bar&#39;});  =&gt; true
+f.matches({cn: &#39;foo&#39;});  =&gt; false
+</code></pre>
+<h1>ApproximateFilter</h1>
+<p>The approximate filter is used to check &quot;approximate&quot; matching of
+attribute/value assertions.  This object will have an <code>attribute</code> and
+<code>value</code> property, and the <code>name</code> property will be <code>approx</code>.</p>
+<p>As a side point, this is a useless filter. It&#39;s really only here if you have
+some whacky client that&#39;s sending this.  It just does an exact match (which
+is what ActiveDirectory does too).</p>
+<p>The string syntax for an equality filter is <code>(attr~=value)</code>.</p>
+<p>The <code>matches()</code> method will return true IFF the passed in object has a
+key matching <code>attribute</code> and a value exactly matching <code>value</code>.</p>
+<pre><code class="language-js">const f = new ApproximateFilter({
+  attribute: &#39;cn&#39;,
+  value: &#39;foo&#39;
+});
+
+f.matches({cn: &#39;foo&#39;});  =&gt; true
+f.matches({cn: &#39;bar&#39;});  =&gt; false
+</code></pre>
+
+</div><!-- end #content -->
+
+</body>
+</html>

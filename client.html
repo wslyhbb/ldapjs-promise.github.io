@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Client API | ldapjs-promise</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="media/css/style.css">
+    <link rel="stylesheet" type="text/css" href="media/css/highlight.css">
+</head>
+<body>
+<div id="header">
+    <h1>Client API | ldapjs-promise Documentation</h1>
+</div>
+<div id="sidebar">
+
+<div>Sections</div>
+<span>
+<ul>
+<li><div><a href="index.html">Home</a></div></li>
+<li><div><a href="guide.html">Guide</a></div></li>
+<li><div><a href="examples.html">Examples</a></div></li>
+<li><div><a href="client.html">Client API</a></div></li>
+<li><div><a href="server.html">Server API</a></div></li>
+<li><div><a href="dn.html">DN API</a></div></li>
+<li><div><a href="filters.html">Filters API</a></div></li>
+<li><div><a href="errors.html">Error API</a></div></li>
+</ul>
+</span>
+
+<div>Contents</div>
+</span>
+<ul>
+<li>
+<div>
+<a href="#create-a-client">Create a client</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#connection-management">Connection management</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#client-events">Client events</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#common-patterns">Common patterns</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#bind">bind</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#add">add</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#compare">compare</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#del">del</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#exop">exop</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#modify">modify</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#change">Change</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#modifydn">modifyDN</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#search">search</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#filter-strings">Filter Strings</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#paging">Paging</a>
+</div>
+</li>
+</ul>
+</li>
+<li>
+<div>
+<a href="#searchreturnall">searchReturnAll</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#starttls">starttls</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#unbind">unbind</a>
+</div>
+</li>
+</ul>
+
+</div>
+
+<div id="content">
+<h1>ldapjs-promise Client API</h1>
+<div class="intro"><p>This document covers the ldapjs-promise client API and assumes that you are
+familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> first.</p>
+</div><h1>Create a client</h1>
+<p>The code to create a new client looks like:</p>
+<pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
+
+const client = ldap.createClient({
+  url: [&#39;ldap://127.0.0.1:1389&#39;, &#39;ldap://127.0.0.2:1389&#39;]
+});
+
+client.on(&#39;connectError&#39;, (err) =&gt; {
+  // handle connection error
+})
+</code></pre>
+<p>You can use <code>ldap://</code> or <code>ldaps://</code>; the latter would connect over SSL (note
+that this will not use the LDAP TLS extended operation, but literally an SSL
+connection to port 636, as in LDAP v2). The full set of options to create a
+client is:</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>url</td>
+<td>A string or array of valid LDAP URL(s) (proto/host/port)</td>
+</tr>
+<tr>
+<td>socketPath</td>
+<td>Socket path if using AF_UNIX sockets</td>
+</tr>
+<tr>
+<td>log</td>
+<td>A compatible logger instance (Default: no-op logger)</td>
+</tr>
+<tr>
+<td>timeout</td>
+<td>Milliseconds client should let operations live for before timing out (Default: Infinity)</td>
+</tr>
+<tr>
+<td>connectTimeout</td>
+<td>Milliseconds client should wait before timing out on TCP connections (Default: OS default)</td>
+</tr>
+<tr>
+<td>tlsOptions</td>
+<td>Additional options passed to TLS connection layer when connecting via <code>ldaps://</code> (See: The TLS docs for node.js)</td>
+</tr>
+<tr>
+<td>idleTimeout</td>
+<td>Milliseconds after last activity before client emits idle event</td>
+</tr>
+<tr>
+<td>reconnect</td>
+<td>Try to reconnect when the connection gets lost (Default is false)</td>
+</tr>
+</tbody></table>
+<h3>url</h3>
+<p>This parameter takes a single connection string or an array of connection strings
+as an input. In case an array is provided, the client tries to connect to the
+servers in given order. To achieve random server strategy (e.g. to distribute
+the load among the servers), please shuffle the array before passing it as an
+argument.</p>
+<h3>Note On Logger</h3>
+<p>A passed in logger is expected to conform to the <a href="https://www.npmjs.com/package/bunyan">Bunyan</a>
+API. Specifically, the logger is expected to have a <code>child()</code> method. If a logger
+is supplied that does not have such a method, then a shim version is added
+that merely returns the passed in logger.</p>
+<p>Known compatible loggers are:</p>
+<ul>
+<li><a href="https://www.npmjs.com/package/bunyan">Bunyan</a></li>
+<li><a href="https://www.npmjs.com/package/pino">Pino</a></li>
+</ul>
+<h3>Note On Error Handling</h3>
+<p>The client is an <code>EventEmitter</code>. If you do not register an error handler and
+e.g. a connection error occurs, Node.js will print a stack trace and exit the
+process (<a href="https://nodejs.org/api/events.html#error-events">reference</a>).</p>
+<h2>Connection management</h2>
+<p>As LDAP is a stateful protocol (as opposed to HTTP), having connections torn
+down from underneath you can be difficult to deal with. Several mechanisms
+have been provided to mitigate this trouble.</p>
+<h3>Reconnect</h3>
+<p>You can provide a Boolean option indicating if a reconnect should be tried. For
+more sophisticated control, you can provide an Object with the properties
+<code>initialDelay</code> (default: <code>100</code>), <code>maxDelay</code> (default: <code>10000</code>) and
+<code>failAfter</code> (default: <code>Infinity</code>).
+After the reconnect you maybe need to <a href="#bind">bind</a> again.</p>
+<h2>Client events</h2>
+<p>The client is an <code>EventEmitter</code> and can emit the following events:</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>error</td>
+<td>General error</td>
+</tr>
+<tr>
+<td>connectRefused</td>
+<td>Server refused connection. Most likely bad authentication</td>
+</tr>
+<tr>
+<td>connectTimeout</td>
+<td>Server timeout</td>
+</tr>
+<tr>
+<td>connectError</td>
+<td>Socket connection error</td>
+</tr>
+<tr>
+<td>setupError</td>
+<td>Setup error after successful connection</td>
+</tr>
+<tr>
+<td>socketTimeout</td>
+<td>Socket timeout</td>
+</tr>
+<tr>
+<td>resultError</td>
+<td>Search result error</td>
+</tr>
+<tr>
+<td>timeout</td>
+<td>Search result timeout</td>
+</tr>
+<tr>
+<td>destroy</td>
+<td>After client is disconnected</td>
+</tr>
+<tr>
+<td>end</td>
+<td>Socket end event</td>
+</tr>
+<tr>
+<td>close</td>
+<td>Socket closed</td>
+</tr>
+<tr>
+<td>connect</td>
+<td>Client connected</td>
+</tr>
+<tr>
+<td>idle</td>
+<td>Idle timeout reached</td>
+</tr>
+</tbody></table>
+<h2>Common patterns</h2>
+<p>The last parameter in every API is <code>controls</code>. <code>controls</code> can be either a
+single instance of a <code>Control</code> or an array of <code>Control</code> objects.
+You can, and probably will, omit this option.</p>
+<p>Almost every operation returns a promise that either resolves a <code>res</code> or throws
+an <code>err</code> where err will be an instance of an <code>LDAPError</code> (you can use
+<code>instanceof</code> to switch).
+You probably will not need to check the <code>res</code> parameter, but it is there if you do.</p>
+<h1>bind</h1>
+<p><code>bind(dn, password, controls)</code></p>
+<p>Performs a bind operation against the LDAP server.</p>
+<p>The bind API only allows LDAP &#39;simple&#39; binds (equivalent to HTTP Basic
+Authentication) for now. Note that all client APIs can optionally take an array
+of <code>Control</code> objects. You probably do not need them though...</p>
+<p>Example:</p>
+<pre><code class="language-js">await client.bind(&#39;cn=root&#39;, &#39;secret&#39;);
+</code></pre>
+<h1>add</h1>
+<p><code>add(dn, entry, controls)</code></p>
+<p>Performs an add operation against the LDAP server.</p>
+<p>Allows you to add an entry (which is just a plain JS object), and as always,
+controls are optional.</p>
+<p>Example:</p>
+<pre><code class="language-js">const entry = {
+  cn: &#39;foo&#39;,
+  sn: &#39;bar&#39;,
+  email: [&#39;foo@bar.com&#39;, &#39;foo1@bar.com&#39;],
+  objectclass: &#39;fooPerson&#39;
+};
+await client.add(&#39;cn=foo, o=example&#39;, entry);
+</code></pre>
+<h1>compare</h1>
+<p><code>compare(dn, attribute, value, controls)</code></p>
+<p>Performs an LDAP compare operation with the given attribute and value against
+the entry referenced by dn.</p>
+<p>Example:</p>
+<pre><code class="language-js">const res = await client.compare(&#39;cn=foo, o=example&#39;, &#39;sn&#39;, &#39;bar&#39;);
+
+console.log(&#39;matched: &#39; + res.matched);
+</code></pre>
+<h1>del</h1>
+<p><code>del(dn, controls)</code></p>
+<p>Deletes an entry from the LDAP server.</p>
+<p>Example:</p>
+<pre><code class="language-js">await client.del(&#39;cn=foo, o=example&#39;);
+</code></pre>
+<h1>exop</h1>
+<p><code>exop(name, value, controls)</code></p>
+<p>Performs an LDAP extended operation against an LDAP server. <code>name</code> is typically
+going to be an OID (well, the RFC says it must be; however, ldapjs-promise has
+no such restriction).  <code>value</code> is completely arbitrary, and is whatever the
+exop says it should be.</p>
+<p>Example (performs an LDAP &#39;whois&#39; extended op):</p>
+<pre><code class="language-js">const res = await client.exop(&#39;1.3.6.1.4.1.4203.1.11.3&#39;);
+
+console.log(&#39;whois: &#39; + res.value);
+</code></pre>
+<h1>modify</h1>
+<p><code>modify(name, changes, controls)</code></p>
+<p>Performs an LDAP modify operation against the LDAP server.  This API requires
+you to pass in a <code>Change</code> object, which is described below.  Note that you can
+pass in a single <code>Change</code> or an array of <code>Change</code> objects.</p>
+<p>Example:</p>
+<pre><code class="language-js">const change = new ldap.Change({
+  operation: &#39;add&#39;,
+  modification: {
+    type: &#39;pets&#39;,
+    values: [&#39;cat&#39;, &#39;dog&#39;]
+  }
+});
+
+await client.modify(&#39;cn=foo, o=example&#39;, change);
+</code></pre>
+<h2>Change</h2>
+<p>A <code>Change</code> object maps to the LDAP protocol of a modify change, and requires
+you to set the <code>operation</code> and <code>modification</code>.  The <code>operation</code> is a string,
+and must be one of:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>replace</td>
+<td>Replaces the attribute referenced in <code>modification</code>.  If the modification has no values, it is equivalent to a delete.</td>
+</tr>
+<tr>
+<td>add</td>
+<td>Adds the attribute value(s) referenced in <code>modification</code>.  The attribute may or may not already exist.</td>
+</tr>
+<tr>
+<td>delete</td>
+<td>Deletes the attribute (and all values) referenced in <code>modification</code>.</td>
+</tr>
+</tbody></table>
+<p><code>modification</code> is just a plain old JS object with the required type and values you want.</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>type</td>
+<td>String that defines the attribute type for the modification.</td>
+</tr>
+<tr>
+<td>values</td>
+<td>Defines the values for modification.</td>
+</tr>
+</tbody></table>
+<h1>modifyDN</h1>
+<p><code>modifyDN(dn, newDN, controls)</code></p>
+<p>Performs an LDAP modifyDN (rename) operation against an entry in the LDAP
+server.  A couple points with this client API:</p>
+<ul>
+<li>There is no ability to set &quot;keep old dn.&quot;  It is always going to flag the old
+dn to be purged.</li>
+<li>The client code will automatically figure out if the request is a &quot;new
+superior&quot; request (&quot;new superior&quot; means move to a different part of the tree,
+as opposed to just renaming the leaf).</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-js">await client.modifyDN(&#39;cn=foo, o=example&#39;, &#39;cn=bar&#39;);
+</code></pre>
+<h1>search</h1>
+<p><code>search(base, options, controls)</code></p>
+<p>Performs a search operation against the LDAP server.</p>
+<p>The search operation is more complex than the other operations, so this one
+takes an <code>options</code> object for all the parameters.  However, ldapjs-promise
+makes some defaults for you so that if you pass nothing in, it is pretty much
+equivalent to an HTTP GET operation (i.e., base search against the DN, filter
+set to always match).</p>
+<p>Like every other operation, <code>base</code> is a DN string.</p>
+<p>Options can be a string representing a valid LDAP filter or an object
+containing the following fields:</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>scope</td>
+<td>One of <code>base</code>, <code>one</code>, or <code>sub</code>. Defaults to <code>base</code>.</td>
+</tr>
+<tr>
+<td>filter</td>
+<td>A string version of an LDAP filter (see below), or a programatically constructed <code>Filter</code> object. Defaults to <code>(objectclass=*)</code>.</td>
+</tr>
+<tr>
+<td>attributes</td>
+<td>attributes to select and return (if these are set, the server will return <em>only</em> these attributes). Defaults to the empty set, which means all attributes. You can provide a string if you want a single attribute or an array of string for one or many.</td>
+</tr>
+<tr>
+<td>attrsOnly</td>
+<td>boolean on whether you want the server to only return the names of the attributes, and not their values.  Borderline useless.  Defaults to false.</td>
+</tr>
+<tr>
+<td>sizeLimit</td>
+<td>the maximum number of entries to return. Defaults to 0 (unlimited).</td>
+</tr>
+<tr>
+<td>timeLimit</td>
+<td>the maximum amount of time the server should take in responding, in seconds. Defaults to 10.  Lots of servers will ignore this.</td>
+</tr>
+<tr>
+<td>paged</td>
+<td>enable and/or configure automatic result paging</td>
+</tr>
+</tbody></table>
+<p>Responses returned by the <code>search</code> method are an <code>EventEmitter</code> where you will
+get a notification for each <code>searchEntry</code> that comes back from the server. You
+will additionally be able to listen for a <code>searchRequest</code>, <code>searchReference</code>,
+<code>error</code> and <code>end</code> event.
+<code>searchRequest</code> is emitted immediately after every <code>SearchRequest</code> is sent with
+a <code>SearchRequest</code> parameter. You can do operations like <code>client.abandon</code> with
+<code>searchRequest.messageId</code> to abandon this search request. Note that the <code>error</code>
+event will only be for client/TCP errors, not LDAP error codes like the other
+APIs. You will want to check the LDAP status code (likely for <code>0</code>) on the <code>end</code>
+event to assert success. LDAP search results can give you a lot of status
+codes, such as time or size exceeded, busy, inappropriate matching, etc., which
+is why this method does not try to wrap up the code matching.</p>
+<p>Example:</p>
+<pre><code class="language-js">const opts = {
+  filter: &#39;(&amp;(l=Seattle)(email=*@foo.com))&#39;,
+  scope: &#39;sub&#39;,
+  attributes: [&#39;dn&#39;, &#39;sn&#39;, &#39;cn&#39;]
+};
+
+const res = await client.search(&#39;o=example&#39;, opts);
+res.on(&#39;searchRequest&#39;, (searchRequest) =&gt; {
+  console.log(&#39;searchRequest: &#39;, searchRequest.messageId);
+});
+res.on(&#39;searchEntry&#39;, (entry) =&gt; {
+  console.log(&#39;entry: &#39; + JSON.stringify(entry.pojo));
+});
+res.on(&#39;searchReference&#39;, (referral) =&gt; {
+  console.log(&#39;referral: &#39; + referral.uris.join());
+});
+res.on(&#39;error&#39;, (err) =&gt; {
+  console.error(&#39;error: &#39; + err.message);
+});
+res.on(&#39;end&#39;, (result) =&gt; {
+  console.log(&#39;status: &#39; + result.status);
+});
+</code></pre>
+<h2>Filter Strings</h2>
+<p>The easiest way to write search filters is to write them compliant with RFC2254,
+which is &quot;The string representation of LDAP search filters.&quot;  Note that
+ldapjs-promise does not support extensible matching, since it is one of those
+features that almost nobody actually uses in practice.</p>
+<p>Assuming you do not really want to read the RFC, search filters in LDAP are
+basically a &quot;tree&quot; of attribute/value assertions, with the tree specified in
+prefix notation.  For example, let us start simple, and build up a complicated
+filter.  The most basic filter is equality, so let us assume you want to search
+for an attribute <code>email</code> with a value of <code>foo@bar.com</code>.  The syntax would be:</p>
+<pre><code>(email=foo@bar.com)
+</code></pre>
+<p>ldapjs-promise requires all filters to be surrounded by &#39;()&#39; blocks. Ok, that
+was easy. Let us now assume that you want to find all records where the email
+is actually just anything in the &quot;@bar.com&quot; domain and the location attribute
+is set to Seattle:</p>
+<pre><code>(&amp;(email=*@bar.com)(l=Seattle))
+</code></pre>
+<p>Now our filter is actually three LDAP filters.  We have an <code>and</code> filter (single
+amp <code>&amp;</code>), an <code>equality</code> filter <code>(the l=Seattle)</code>, and a <code>substring</code> filter.
+Substrings are wildcard filters. They use <code>*</code> as the wildcard. You can put more
+than one wildcard for a given string. For example you could do
+<code>(email=*@*bar.com)</code> to match any email of @bar.com or its subdomains like
+<code>&quot;example@foo.bar.com&quot;</code>.</p>
+<p>Now, let us say we also want to set our filter to include a specification that
+either the employeeType <em>not</em> be a manager nor a secretary:</p>
+<pre><code>(&amp;(email=*@bar.com)(l=Seattle)(!(|(employeeType=manager)(employeeType=secretary))))
+</code></pre>
+<p>The <code>not</code> character is represented as a <code>!</code>, the <code>or</code> as a single pipe <code>|</code>.
+It gets a little bit complicated, but it is actually quite powerful, and lets
+you find almost anything you are looking for.</p>
+<h2>Paging</h2>
+<p>Many LDAP server enforce size limits upon the returned result set (commonly
+1000).  In order to retrieve results beyond this limit, a <code>PagedResultControl</code>
+is passed between the client and server to iterate through the entire dataset.
+While callers could choose to do this manually via the <code>controls</code> parameter to
+<code>search()</code>, ldapjs has internal mechanisms to easily automate the process.  The
+most simple way to use the paging automation is to set the <code>paged</code> option to
+true when performing a search:</p>
+<pre><code class="language-js">const opts = {
+  filter: &#39;(objectclass=commonobject)&#39;,
+  scope: &#39;sub&#39;,
+  paged: true,
+  sizeLimit: 200
+};
+const res = await client.search(&#39;o=largedir&#39;, opts);
+res.on(&#39;searchEntry&#39;, (entry) =&gt; {
+  // do per-entry processing
+});
+res.on(&#39;page&#39;, (result) =&gt; {
+  console.log(&#39;page end&#39;);
+});
+res.on(&#39;error&#39;, (resErr) =&gt; {
+  assert.ifError(resErr);
+});
+res.on(&#39;end&#39;, (result) =&gt; {
+  console.log(&#39;done &#39;);
+});
+</code></pre>
+<p>This will enable paging with a default page size of 199 (<code>sizeLimit</code> - 1) and
+will output all of the resulting objects via the <code>searchEntry</code> event.  At the
+end of each result during the operation, a <code>page</code> event will be emitted as
+well (which includes the intermediate <code>searchResult</code> object).</p>
+<p>For those wanting more precise control over the process, an object with several
+parameters can be provided for the <code>paged</code> option.  The <code>pageSize</code> parameter
+sets the size of result pages requested from the server.  If no value is
+specified, it will fall back to the default (100 or <code>sizeLimit</code> - 1, to obey
+the RFC).  The <code>pagePause</code> parameter allows back-pressure to be exerted on the
+paged search operation by pausing  at the end of each page.  When enabled, a
+callback function is passed as an additional parameter to <code>page</code> events.  The
+client will wait to request the next page until that callback is executed.</p>
+<p>Here is an example where both of those parameters are used:</p>
+<pre><code class="language-js">const queue = new MyWorkQueue(someSlowWorkFunction);
+const opts = {
+  filter: &#39;(objectclass=commonobject)&#39;,
+  scope: &#39;sub&#39;,
+  paged: {
+    pageSize: 250,
+    pagePause: true
+  },
+};
+const res = await client.search(&#39;o=largerdir&#39;, opts);
+res.on(&#39;searchEntry&#39;, (entry) =&gt; {
+  // Submit incoming objects to queue
+  queue.push(entry);
+});
+res.on(&#39;page&#39;, (result, cb) =&gt; {
+  // Allow the queue to flush before fetching next page
+  queue.cbWhenFlushed(cb);
+});
+res.on(&#39;error&#39;, (resErr) =&gt; {
+  assert.ifError(resErr);
+});
+res.on(&#39;end&#39;, (result) =&gt; {
+  console.log(&#39;done&#39;);
+});
+</code></pre>
+<h1>searchReturnAll</h1>
+<p><code>searchReturnAll(base, options, controls)</code></p>
+<p>Performs a search operation against the LDAP server.</p>
+<p>A wrapper method around the search method that collects all of the entries and
+referrals from the search and returns it as an object. An opinionated function
+that simply returns the results but lacks the control of the search method.</p>
+<p>Example:</p>
+<pre><code class="language-js">const opts = {
+  filter: &#39;(&amp;(l=Seattle)(email=*@foo.com))&#39;,
+  scope: &#39;sub&#39;,
+  attributes: [&#39;dn&#39;, &#39;sn&#39;, &#39;cn&#39;]
+};
+
+const res = await client.searchReturnAll(&#39;o=example&#39;, opts);
+
+console.log(res.entries);
+</code></pre>
+<h1>starttls</h1>
+<p><code>starttls(options, controls)</code></p>
+<p>Attempt to secure existing LDAP connection via STARTTLS.</p>
+<p>Example:</p>
+<pre><code class="language-js">const opts = {
+  ca: [fs.readFileSync(&#39;mycacert.pem&#39;)]
+};
+
+await client.starttls(opts);
+
+// Client communication now TLS protected
+</code></pre>
+<h1>unbind</h1>
+<p><code>unbind()</code></p>
+<p>Performs an unbind operation against the LDAP server.</p>
+<p>Note that unbind operation is not an opposite operation for bind. Unbinding
+results in disconnecting the client regardless of whether a bind operation was
+performed.</p>
+<p>Example:</p>
+<pre><code class="language-js">await client.unbind();
+</code></pre>
+
+</div><!-- end #content -->
+
+</body>
+</html>

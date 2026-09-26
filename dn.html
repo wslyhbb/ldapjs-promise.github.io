@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>DN API | ldapjs-promise</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="media/css/style.css">
+    <link rel="stylesheet" type="text/css" href="media/css/highlight.css">
+</head>
+<body>
+<div id="header">
+    <h1>DN API | ldapjs-promise Documentation</h1>
+</div>
+<div id="sidebar">
+
+<div>Sections</div>
+<span>
+<ul>
+<li><div><a href="index.html">Home</a></div></li>
+<li><div><a href="guide.html">Guide</a></div></li>
+<li><div><a href="examples.html">Examples</a></div></li>
+<li><div><a href="client.html">Client API</a></div></li>
+<li><div><a href="server.html">Server API</a></div></li>
+<li><div><a href="dn.html">DN API</a></div></li>
+<li><div><a href="filters.html">Filters API</a></div></li>
+<li><div><a href="errors.html">Error API</a></div></li>
+</ul>
+</span>
+
+<div>Contents</div>
+</span>
+<ul>
+<li>
+<div>
+<a href="#parsedndnstring">parseDN(dnString)</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#dn">DN</a>
+</div>
+<ul>
+<li>
+<div>
+<a href="#childofdn">childOf(dn)</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#parentofdn">parentOf(dn)</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#equalsdn">equals(dn)</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#parent">parent()</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#formatoptions">format(options)</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#setformatoptions">setFormat(options)</a>
+</div>
+</li>
+<li>
+<div>
+<a href="#tostring">toString()</a>
+</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+
+<div id="content">
+<h1>ldapjs-promise DN API</h1>
+<div class="intro"><p>This document covers the ldapjs-promise DN API and assumes that you are
+familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> first.</p>
+</div><p>DNs are LDAP distinguished names, and are composed of a set of RDNs (relative
+distinguished names).  <a href="http://www.ietf.org/rfc/rfc2253.txt">RFC2253</a> has the
+complete specification, but basically an RDN is an attribute value assertion
+with <code>=</code> as the seperator, like: <code>cn=foo</code> where &#39;cn&#39; is &#39;commonName&#39; and &#39;foo&#39;
+is the value.  You can have compound RDNs by using the <code>+</code> character:
+<code>cn=foo+sn=bar</code>.  As stated above, DNs are a set of RDNs, typically separated
+with the <code>,</code> character, like:  <code>cn=foo, ou=people, o=example</code>.  This uniquely
+identifies an entry in the tree, and is read &quot;bottom up&quot;.</p>
+<h1>parseDN(dnString)</h1>
+<p>The <code>parseDN</code> API converts a string representation of a DN into an
+ldapjs-promise DN object; in most cases this will be handled for you under the
+covers of the ldapjs-promise framework, but if you need it, it is there.</p>
+<pre><code class="language-js">const parseDN = require(&#39;ldapjs-promise&#39;).parseDN;
+
+const dn = parseDN(&#39;cn=foo+sn=bar, ou=people, o=example&#39;);
+console.log(dn.toString());
+</code></pre>
+<h1>DN</h1>
+<p>The DN object is largely what you will be interacting with, since all the
+server APIs are setup to give you a DN object.</p>
+<h2>childOf(dn)</h2>
+<p>Returns a boolean indicating whether &#39;this&#39; is a child of the passed in dn. The
+<code>dn</code> argument can be either a string or a DN.</p>
+<pre><code class="language-js">server.add(&#39;o=example&#39;, (req, res, next) =&gt; {
+  if (req.dn.childOf(&#39;ou=people, o=example&#39;)) {
+    ...
+  } else {
+    ...
+  }
+});
+</code></pre>
+<h2>parentOf(dn)</h2>
+<p>The inverse of <code>childOf</code>; returns a boolean on whether or not <code>this</code> is a
+parent of the passed in dn.  Like <code>childOf</code>, can take either a string or a DN.</p>
+<pre><code class="language-js">server.add(&#39;o=example&#39;, (req, res, next) =&gt; {
+  const dn = parseDN(&#39;ou=people, o=example&#39;);
+  if (dn.parentOf(req.dn)) {
+    ...
+  } else {
+    ...
+  }
+});
+</code></pre>
+<h2>equals(dn)</h2>
+<p>Returns a boolean indicating whether <code>this</code> is equivalent to the passed in <code>dn</code>
+argument. <code>dn</code> can be a string or a DN.</p>
+<pre><code class="language-js">server.add(&#39;o=example&#39;, (req, res, next) =&gt; {
+  if (req.dn.equals(&#39;cn=foo, ou=people, o=example&#39;)) {
+    ...
+  } else {
+    ...
+  }
+});
+</code></pre>
+<h2>parent()</h2>
+<p>Returns a DN object that is the direct parent of <code>this</code>.  If there is no parent
+this can return <code>null</code> (e.g. <code>parseDN(&#39;o=example&#39;).parent()</code> will return null).</p>
+<h2>format(options)</h2>
+<p>Convert a DN object to string according to specified formatting options.  These
+options are divided into two types.  Preservation Options use data recorded
+during parsing to preserve details of the original DN. Modification options
+alter string formatting defaults.  Preservation options <em>always</em> take
+precedence over Modification Options.</p>
+<p>Preservation Options:</p>
+<ul>
+<li><code>keepOrder</code>: Order of multi-value RDNs.</li>
+<li><code>keepQuote</code>: RDN values which were quoted will remain so.</li>
+<li><code>keepSpace</code>: Leading/trailing spaces will be output.</li>
+<li><code>keepCase</code>: Parsed attribute name will be output instead of lowercased version.</li>
+</ul>
+<p>Modification Options:</p>
+<ul>
+<li><code>upperName</code>: RDN names will be uppercased instead of lowercased.</li>
+<li><code>skipSpace</code>: Disable trailing space after RDN separators</li>
+</ul>
+<h2>setFormat(options)</h2>
+<p>Sets the default <code>options</code> for string formatting when <code>toString</code> is called.
+It accepts the same parameters as <code>format</code>.</p>
+<h2>toString()</h2>
+<p>Returns the string representation of <code>this</code>.</p>
+<pre><code class="language-js">server.add(&#39;o=example&#39;, (req, res, next) =&gt; {
+  console.log(req.dn.toString());
+});
+</code></pre>
+
+</div><!-- end #content -->
+
+</body>
+</html>
