@@ -105,7 +105,7 @@ will be one of:</p>
 <p>Parses an <a href="http://www.ietf.org/rfc/rfc2254.txt">RFC2254</a> filter string into an
 ldapjs-promise object(s).  If the filter is &quot;complex&quot;, it will be a &quot;tree&quot; of objects.
 For example:</p>
-<pre><code class="language-js">const parseFilter = require(&#39;ldapjs-promise&#39;).parseFilter;
+<pre><code class="language-js">import { parseFilter } from &#39;ldapjs-promise&#39;;
 
 const f = parseFilter(&#39;(objectclass=*)&#39;);
 </code></pre>

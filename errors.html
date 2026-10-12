@@ -46,7 +46,10 @@ familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> firs
 called <code>LDAPError</code>. In addition to the properties listed below, all errors will
 have a <code>stack</code> property correctly set.</p>
 <p>In general, you will be using the errors in ldapjs-promise like:</p>
-<pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
+<pre><code class="language-js">import {
+  NoSuchObjectError,
+  EntryAlreadyExistsError
+} from &#39;ldapjs-promise&#39;;
 
 const db = {};
 
@@ -54,10 +57,10 @@ server.add(&#39;o=example&#39;, (req, res, next) =&gt; {
   const parent = req.dn.parent();
   if (parent) {
     if (!db[parent.toString()])
-      return next(new ldap.NoSuchObjectError(parent.toString()));
+      return next(new NoSuchObjectError(parent.toString()));
   }
   if (db[req.dn.toString()])
-    return next(new ldap.EntryAlreadyExistsError(req.dn.toString()));
+    return next(new EntryAlreadyExistsError(req.dn.toString()));
 
   ...
 });

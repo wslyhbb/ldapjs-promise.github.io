@@ -229,7 +229,7 @@
 familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> first.</p>
 </div><h1>Create a server</h1>
 <p>The code to create a new server looks like:</p>
-<pre><code class="language-js">const server = ldap.createServer();
+<pre><code class="language-js">const server = createServer();
 </code></pre>
 <p>The full list of options is:</p>
 <table>
@@ -319,7 +319,7 @@ handlers together by calling <code>next()</code> and ordering your functions in 
 definition of the route.  For example:</p>
 <pre><code class="language-js">function authorize(req, res, next) {
   if (!req.connection.ldap.bindDN.equals(&#39;cn=root&#39;))
-    return next(new ldap.InsufficientAccessRightsError());
+    return next(new InsufficientAccessRightsError());
 
   return next();
 }
@@ -334,10 +334,13 @@ caching, etc. that need to be placed in an object.</p>
 complete implementation of the LDAP protocol over
 <a href="https://github.com/basho/riak">Riak</a>.  Getting an LDAP server up with riak
 looks like:</p>
-<pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
-const ldapRiak = require(&#39;ldapjs-riak&#39;);
+<pre><code class="language-js">import {
+  createServer,
+  OperationsError
+} from &#39;ldapjs-promise&#39;;
+import ldapRiak from &#39;ldapjs-riak&#39;;
 
-const server = ldap.createServer();
+const server = createServer();
 const backend = ldapRiak.createBackend({
   &quot;host&quot;: &quot;localhost&quot;,
   &quot;port&quot;: 8098,
@@ -370,7 +373,7 @@ that on express/connect, allowing you to chain up &quot;middleware&quot;:</p>
 <p>All request objects have the <code>dn</code> getter on it, which is &quot;context-sensitive&quot;
 and returns the point in the tree that the operation wants to operate on.  The
 LDAP protocol itself sadly doesn&#39;t define operations this way, and has a unique
-name for just about every op.  So, ldapjs calls it <code>dn</code>.  The DN object itself
+name for just about every op.  So, ldapjs-promise calls it <code>dn</code>.  The DN object itself
 is documented at <a href="dn.html">DN</a>.</p>
 <p>All requests have an optional array of <code>Control</code> objects.  <code>Control</code> will have
 the properties <code>type</code> (string), <code>criticality</code> (boolean), and optionally, a
@@ -401,7 +404,7 @@ ldapjs-promise.  Upon calling <code>next(new LDAPError())</code>, ldapjs-promise
 <em>stop</em> calling your handler chain.  For example:</p>
 <pre><code class="language-js">server.search(&#39;o=example&#39;,
   (req, res, next) =&gt; { return next(); },
-  (req, res, next) =&gt; { return next(new ldap.OperationsError()); },
+  (req, res, next) =&gt; { return next(new OperationsError()); },
   (req, res, next) =&gt; { res.end(); }
 );
 </code></pre>
@@ -418,7 +421,7 @@ ldapjs-promise.  Upon calling <code>next(new LDAPError())</code>, ldapjs-promise
 <p>BindRequest objects have the following properties:</p>
 <h3>version</h3>
 <p>The LDAP protocol version the client is requesting to run this connection on.
-Note that ldapjs only supports LDAP version 3.</p>
+Note that ldapjs-promise only supports LDAP version 3.</p>
 <h3>name</h3>
 <p>The DN the client is attempting to bind as (note this is the same as the <code>dn</code>
 property).</p>
@@ -634,7 +637,7 @@ in their requests.</p>
 operation.</p>
 <h2>ExtendedResponse</h2>
 <h3>name</h3>
-<p>The name of the extended operation. ldapjs will automatically set this.</p>
+<p>The name of the extended operation. ldapjs-promise will automatically set this.</p>
 <h3>value</h3>
 <p>The arbitrary (string) value to send back as part of the response.</p>
 <h1>unbind</h1>

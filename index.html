@@ -61,9 +61,11 @@ Reimagining <a href="http://tools.ietf.org/html/rfc4510" id="indextaglink">LDAP<
 <a href="http://tools.ietf.org/html/rfc4510">LDAP</a> clients and servers in
 <a href="http://nodejs.org">Node.js</a>.  It is intended for developers used to interacting
 with HTTP services in node and <a href="http://restify.com">restify</a>.</p>
-</div><pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
+</div><pre><code class="language-js">import {
+  createServer
+} from &#39;ldapjs-promise&#39;;
 
-const server = ldap.createServer();
+const server = createServer();
 
 server.search(&#39;o=example&#39;, (req, res, next) =&gt; {
   const obj = {
@@ -124,7 +126,7 @@ API documentation is:</p>
 </tr>
 <tr>
 <td><a href="errors.html">Error API</a></td>
-<td>Listing of all ldapjs Error objects.</td>
+<td>Listing of all ldapjs-promise Error objects.</td>
 </tr>
 <tr>
 <td><a href="examples.html">Examples</a></td>

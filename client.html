@@ -135,9 +135,9 @@
 familiar with LDAP. If you are not, read the <a href="guide.html">guide</a> first.</p>
 </div><h1>Create a client</h1>
 <p>The code to create a new client looks like:</p>
-<pre><code class="language-js">const ldap = require(&#39;ldapjs-promise&#39;);
+<pre><code class="language-js">import { createClient } from &#39;ldapjs-promise&#39;;
 
-const client = ldap.createClient({
+const client = createClient({
   url: [&#39;ldap://127.0.0.1:1389&#39;, &#39;ldap://127.0.0.2:1389&#39;]
 });
 
@@ -528,7 +528,7 @@ you find almost anything you are looking for.</p>
 1000).  In order to retrieve results beyond this limit, a <code>PagedResultControl</code>
 is passed between the client and server to iterate through the entire dataset.
 While callers could choose to do this manually via the <code>controls</code> parameter to
-<code>search()</code>, ldapjs has internal mechanisms to easily automate the process.  The
+<code>search()</code>, ldapjs-promise has internal mechanisms to easily automate the process.  The
 most simple way to use the paging automation is to set the <code>paged</code> option to
 true when performing a search:</p>
 <pre><code class="language-js">const opts = {

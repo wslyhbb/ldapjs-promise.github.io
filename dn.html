@@ -96,7 +96,7 @@ identifies an entry in the tree, and is read &quot;bottom up&quot;.</p>
 <p>The <code>parseDN</code> API converts a string representation of a DN into an
 ldapjs-promise DN object; in most cases this will be handled for you under the
 covers of the ldapjs-promise framework, but if you need it, it is there.</p>
-<pre><code class="language-js">const parseDN = require(&#39;ldapjs-promise&#39;).parseDN;
+<pre><code class="language-js">import { parseDN } from &#39;ldapjs-promise&#39;;
 
 const dn = parseDN(&#39;cn=foo+sn=bar, ou=people, o=example&#39;);
 console.log(dn.toString());
